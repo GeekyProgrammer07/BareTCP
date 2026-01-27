@@ -1,6 +1,6 @@
 use std::io::{self};
 
-use etherparse::SlicedPacket;
+use etherparse::{IpNumber, Ipv4HeaderSlice, TcpHeaderSlice};
 use tun_tap::{Iface, Mode};
 
 fn main() -> io::Result<()> {
@@ -17,34 +17,31 @@ fn main() -> io::Result<()> {
         if nbytes == 0 {
             break;
         }
-
         // Network protocols send numbers as bytes, not integers.
         // from_be_bytes gives those bytes semantic meaning.
-        let flags = u16::from_be_bytes([buffer[0], buffer[1]]);
-        let proto = u16::from_be_bytes([buffer[2], buffer[3]]);
-        // println!("{:x}",proto);
-        if proto == 0x800 {
-            println!("inside");
-            match SlicedPacket::from_ethernet(&buffer[4..nbytes]) {
+        // let ethernet_flags = u16::from_be_bytes([buffer[0], buffer[1]]);
+        let ethernet_proto = u16::from_be_bytes([buffer[2], buffer[3]]);
+        if ethernet_proto == 0x800 {
+            // Only for IPv4 protocol
+            //0x800 => Ethertype in the Ethernet frame tells the reciever which protocol the ip_header belongs to
+            match Ipv4HeaderSlice::from_slice(&buffer[4..nbytes]) {
                 Err(value) => eprintln!("Err {:?}", value),
-                Ok(value) => {
-                    // println!(
-                    //     "read {} bytes, flags: {}, proto: {:x}, BytesStream: {:02x?}",
-                    //     nbytes,
-                    //     flags,
-                    //     proto,
-                    //     &buffer[4..nbytes]
-                    // );
-                    println!(
-                        "read {} bytes, flags: {}, proto: {:x}",
-                        nbytes, flags, proto,
-                    );
-                    println!("link: {:?}", value.link);
-                    println!("link_exts: {:?}", value.link_exts); // contains vlan & macsec
-                    println!("net: {:?}", value.net); // contains ip & arp
-                    println!("transport: {:?}", value.transport);
+                Ok(ip_header) => {
+                    let ip_proto = ip_header.protocol();
+
+                    if ip_proto == IpNumber::from(6) {
+                        // Only catch for TCP
+                        match TcpHeaderSlice::from_slice(&buffer[4 + ip_header.slice().len()..]) {
+                            Ok(tcp_payload) => {
+                                println!("Got TCP ip_header: {:?}", tcp_payload);
+                            }
+                            Err(value) => eprintln!("Err {:?}", value),
+                        }
+                    } else {
+                        continue;
+                    }
                 }
-            };
+            }
         } else {
             continue;
         }
