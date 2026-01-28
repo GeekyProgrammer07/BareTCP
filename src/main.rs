@@ -1,17 +1,23 @@
-use std::io::{self};
+use std::{collections::HashMap, error::Error, net::Ipv4Addr};
 
 use etherparse::{IpNumber, Ipv4HeaderSlice, TcpHeaderSlice};
 use tun_tap::{Iface, Mode};
 
-fn main() -> io::Result<()> {
-    let iface = Iface::new("tun0", Mode::Tun).expect("Failed to create a TUN device");
+use crate::tcp::state::State;
 
-    // Etherenet MTU is typically 1500 bytes + 4 for header
-    // Flags [2 bytes]
-    // Proto [2 bytes] => EtherType
-    // Raw protocol(IP, IPv6, etc) frame {1500bytes}
+mod tcp;
+
+#[derive(Eq, Hash, PartialEq)]
+struct Quad {
+    // Quad: (SrcIp, SrcPort, DesIp, DesPort)
+    src: (Ipv4Addr, u16),
+    dst: (Ipv4Addr, u16),
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut iface = Iface::new("tun0", Mode::Tun).expect("Failed to create a TUN device"); // Etherenet MTU is typically 1500 bytes + 4 for header // Flags [2 bytes] // Proto [2 bytes] => EtherType // Raw protocol(IP, IPv6, etc) frame {1500bytes}
     let mut buffer = vec![0u8; 1504];
-
+    let mut connections: HashMap<Quad, State> = Default::default();
     loop {
         let nbytes = iface.recv(&mut buffer).unwrap();
         if nbytes == 0 {
@@ -32,8 +38,24 @@ fn main() -> io::Result<()> {
                     if ip_proto == IpNumber::from(6) {
                         // Only catch for TCP
                         match TcpHeaderSlice::from_slice(&buffer[4 + ip_header.slice().len()..]) {
-                            Ok(tcp_payload) => {
-                                println!("Got TCP ip_header: {:?}", tcp_payload);
+                            Ok(tcp_header) => {
+                                let header_data =
+                                    4 + ip_header.slice().len() + tcp_header.slice().len();
+                                connections
+                                    .entry(Quad {
+                                        src: (ip_header.source_addr(), tcp_header.source_port()),
+                                        dst: (
+                                            ip_header.destination_addr(),
+                                            tcp_header.destination_port(),
+                                        ),
+                                    })
+                                    .or_default()
+                                    .on_packet(
+                                        &mut iface,
+                                        &ip_header,
+                                        &tcp_header,
+                                        &buffer[header_data..nbytes],
+                                    )?;
                             }
                             Err(value) => eprintln!("Err {:?}", value),
                         }
