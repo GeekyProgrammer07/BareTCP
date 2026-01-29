@@ -25,7 +25,13 @@ impl Connection {
         ip_header: &Ipv4HeaderSlice<'a>,
         tcp_header: &TcpHeaderSlice<'a>,
     ) -> Result<Option<Self>, Box<dyn std::error::Error>> {
-        let mut buffer = [0u8; 1500]; // Not 1504 cause of the exclusion of ethernet stuffs
+        let mut buffer = [0u8; 1504]; // Not 1504 cause of the exclusion of ethernet stuffs
+
+        // TUN packet info header
+        buffer[0] = 0x00;
+        buffer[1] = 0x00;
+        buffer[2] = 0x08;
+        buffer[3] = 0x00;
 
         if !tcp_header.syn() {
             // Returns if its not a SYN packet
@@ -76,7 +82,7 @@ impl Connection {
         )?;
 
         let unwritten = {
-            let mut unwritten = &mut buffer[..];
+            let mut unwritten = &mut buffer[4..];
             ip_packet.write(&mut unwritten)?;
             syn_ack.write(&mut unwritten)?;
 
