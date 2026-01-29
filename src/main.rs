@@ -1,9 +1,13 @@
-use std::{collections::HashMap, error::Error, net::Ipv4Addr};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    error::Error,
+    net::Ipv4Addr,
+};
 
 use etherparse::{IpNumber, Ipv4HeaderSlice, TcpHeaderSlice};
 use tun_tap::{Iface, Mode};
 
-use crate::tcp::state::State;
+use crate::tcp::connection::Connection;
 
 mod tcp;
 
@@ -17,7 +21,7 @@ struct Quad {
 fn main() -> Result<(), Box<dyn Error>> {
     let mut iface = Iface::new("tun0", Mode::Tun).expect("Failed to create a TUN device"); // Etherenet MTU is typically 1500 bytes + 4 for header // Flags [2 bytes] // Proto [2 bytes] => EtherType // Raw protocol(IP, IPv6, etc) frame {1500bytes}
     let mut buffer = vec![0u8; 1504];
-    let mut connections: HashMap<Quad, State> = Default::default();
+    let mut connections: HashMap<Quad, Connection> = Default::default();
     loop {
         let nbytes = iface.recv(&mut buffer).unwrap();
         if nbytes == 0 {
@@ -39,23 +43,29 @@ fn main() -> Result<(), Box<dyn Error>> {
                         // Only catch for TCP
                         match TcpHeaderSlice::from_slice(&buffer[4 + ip_header.slice().len()..]) {
                             Ok(tcp_header) => {
-                                let header_data =
-                                    4 + ip_header.slice().len() + tcp_header.slice().len();
-                                connections
-                                    .entry(Quad {
-                                        src: (ip_header.source_addr(), tcp_header.source_port()),
-                                        dst: (
-                                            ip_header.destination_addr(),
-                                            tcp_header.destination_port(),
-                                        ),
-                                    })
-                                    .or_default()
-                                    .on_packet(
-                                        &mut iface,
-                                        &ip_header,
-                                        &tcp_header,
-                                        &buffer[header_data..nbytes],
-                                    )?;
+                                // let header_data =
+                                //     4 + ip_header.slice().len() + tcp_header.slice().len();
+
+                                match connections.entry(Quad {
+                                    src: (ip_header.source_addr(), tcp_header.source_port()),
+                                    dst: (
+                                        ip_header.destination_addr(),
+                                        tcp_header.destination_port(),
+                                    ),
+                                }) {
+                                    Entry::Occupied(_c) => {
+                                        // Update the states
+                                        println!("Over here we update the states");
+                                    }
+                                    Entry::Vacant(e) => {
+                                        // There is no connection I am creating one
+                                        if let Some(conn) =
+                                            Connection::accept(&mut iface, &ip_header, &tcp_header)?
+                                        {
+                                            e.insert(conn);
+                                        }
+                                    }
+                                }
                             }
                             Err(value) => eprintln!("Err {:?}", value),
                         }
