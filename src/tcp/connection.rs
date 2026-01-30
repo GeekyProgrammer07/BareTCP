@@ -1,4 +1,6 @@
-use etherparse::{IpNumber, Ipv4Header, Ipv4HeaderSlice, TcpHeader, TcpHeaderSlice};
+use etherparse::{
+    IpNumber, Ipv4Header, Ipv4HeaderSlice, TcpHeader, TcpHeaderSlice,
+};
 use tun_tap::Iface;
 
 use crate::tcp::{recv::RecvSequenceSpace, send::SendSequenceSpace, state::State};
@@ -72,6 +74,9 @@ impl Connection {
         syn_ack.sequence_number = iss;
         syn_ack.ack = true;
         syn_ack.syn = true;
+
+        syn_ack.checksum =
+            TcpHeader::calc_checksum_ipv4(&syn_ack, &ip_header.to_header(), &[])?;
 
         let ip_packet = Ipv4Header::new(
             syn_ack.header_len() as u16 + 0, // SYN or SYN-ACK doesn't have any data so 0(not needed)
