@@ -10,6 +10,7 @@ use tun_tap::{Iface, Mode};
 use crate::tcp::connection::Connection;
 
 mod tcp;
+mod util;
 
 #[derive(Eq, Hash, PartialEq)]
 struct Quad {
@@ -61,20 +62,24 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         };
 
-        // let header_data =
-        //     4 + ip_header.slice().len() + tcp_header.slice().len();
+        let data_start = 4 + ip_header.slice().len() + tcp_header.slice().len();
+
+        let data = &buffer[data_start..nbytes];
 
         match connections.entry(Quad {
             src: (ip_header.source_addr(), tcp_header.source_port()),
             dst: (ip_header.destination_addr(), tcp_header.destination_port()),
         }) {
-            Entry::Occupied(_c) => {
+            Entry::Occupied(mut entry) => {
                 // Update the states
-                println!("Over here we update the states");
+                let conn = entry.get_mut();
+                conn.on_packet(&tcp_header, data)?;
             }
             Entry::Vacant(e) => {
                 // There is no connection I am creating one
+                println!("Yay we made a conneciton");
                 if let Some(conn) = Connection::accept(&mut iface, &ip_header, &tcp_header)? {
+                    // Only run if the connection was actually created
                     e.insert(conn);
                 }
             }
