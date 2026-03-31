@@ -1,8 +1,8 @@
 #!/bin/sh
 cargo b --release
-sudo setcap cap_net_admin=eip $CARGO_TARGET_DIR/release/BareTCP
+sudo setcap cap_net_admin=eip target/release/BareTCP
 
-$CARGO_TARGET_DIR/release/BareTCP &
+sudo target/release/BareTCP &
 pid=$! #! PID of last background process
 
 # trap lets you: “Before exiting, run this.”
@@ -11,6 +11,9 @@ pid=$! #! PID of last background process
 # TERM: Termination signal (kill)
 # EXIT: script ends for any reason
 trap "kill $pid 2>/dev/null" INT TERM EXIT
+
+# wait a bit so tun0 is created
+sleep 1
 
 sudo ip addr add 10.200.0.1/24 dev tun0
 sudo ip link set up dev tun0
