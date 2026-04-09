@@ -50,7 +50,6 @@ pub fn send_syn_ack(
         10,  // Keeping 10 for initial phases TODO: Will change later with specs
     );
     syn_ack.acknowledgment_number = tcp_header.sequence_number() + 1;
-    syn_ack.sequence_number = iss;
     syn_ack.ack = true;
     syn_ack.syn = true;
 
