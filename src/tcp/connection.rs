@@ -165,11 +165,27 @@ impl Connection {
 
                 if seg_ack == self.send.iss + 1 {
                     // Changing the state
-                    self.state = State::Estab;
+                    // NOTE: We are not handling SIMULTANEOUS OPEN
+                    // TODO: Wrong/old packets (duplicate SYN):  rejected using RST (Figure 9)
+                    // TODO: Broken states (half-open connections): detected and fixed
+                    self.state = State::Estab; // Three way hadshake completes here
+
                     self.send.una = seg_ack;
-                    println!("Changed State to Estab");
+                    // Now for the timbing we are closing the connection
+                    // self.state = State::FinWait1;
                     println!("{:?}", self.state);
                 }
+            }
+            State::Estab => {
+                if !tcp_header.fin() || !data.is_empty() {
+                    unimplemented!()
+                }
+                self.state = State::FinWait1;
+                self.send.nxt += 1;
+                send_fin(nic, ip_header, tcp_header, self.send.nxt, self.receive.nxt);
+            }
+            State::FinWait1 => {
+                println!("This is from finwait1 state");
             }
             _ => {}
         }

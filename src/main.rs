@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             Entry::Occupied(mut entry) => {
                 // Update the states
                 let conn = entry.get_mut();
-                conn.on_packet(&tcp_header, data)?;
+                conn.on_packet(&mut iface, &ip_header, &tcp_header, data);
             }
             Entry::Vacant(e) => {
                 // There is no connection I am creating one

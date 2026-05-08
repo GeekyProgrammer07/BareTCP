@@ -56,6 +56,28 @@ pub fn send_syn_ack(
     send_tcp_packet(nic, ip_header, &mut syn_ack)
 }
 
+pub fn send_fin(
+    nic: &mut Iface,
+    ip_header: &Ipv4HeaderSlice,
+    tcp_header: &TcpHeaderSlice,
+    sequence_number: u32,
+    acknowledgement_number: u32, // Pass RecvSequenceSpace nxt telling we acked until this now we
+                                 // stop
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Send a SYN-ACK packet (2 way handshake)
+    let mut fin = TcpHeader::new(
+        tcp_header.destination_port(),
+        tcp_header.source_port(),
+        sequence_number,
+        10, // Keeping 10 for initial phases TODO: Will change later with specs
+    );
+
+    fin.fin = true;
+    fin.ack = true;
+    fin.acknowledgment_number = acknowledgement_number;
+    send_tcp_packet(nic, ip_header, &mut fin)
+}
+
 // pub fn send_rst(
 //     nic: &mut Iface,
 //     ip_header: &Ipv4HeaderSlice,

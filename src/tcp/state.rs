@@ -4,4 +4,5 @@ pub enum State {
     Listen,
     SynRcvd,
     Estab,
+    FinWait1,
 }
