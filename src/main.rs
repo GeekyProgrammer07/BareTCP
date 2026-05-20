@@ -12,13 +12,6 @@ use crate::tcp::connection::Connection;
 mod tcp;
 mod util;
 
-#[derive(Eq, Hash, PartialEq)]
-struct Quad {
-    // Quad: (SrcIp, SrcPort, DesIp, DesPort)
-    src: (Ipv4Addr, u16),
-    dst: (Ipv4Addr, u16),
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let mut iface = Iface::new("tun0", Mode::Tun).expect("Failed to create a TUN device"); // Etherenet MTU is typically 1500 bytes + 4 for header // Flags [2 bytes] // Proto [2 bytes] => EtherType // Raw protocol(IP, IPv6, etc) frame {1500bytes}
     let mut buffer = vec![0u8; 1504];
@@ -77,7 +70,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             Entry::Vacant(e) => {
                 // There is no connection I am creating one
-                println!("Yay we made a conneciton");
                 if let Some(conn) = Connection::accept(&mut iface, &ip_header, &tcp_header)? {
                     // Only run if the connection was actually created
                     e.insert(conn);

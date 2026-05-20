@@ -15,7 +15,7 @@ trap "kill $pid 2>/dev/null" INT TERM EXIT
 # wait a bit so tun0 is created
 sleep 1
 
-sudo ip addr add 10.200.0.1/24 dev tun0
+sudo ip addr add 10.200.0.1/24 dev tun0 # /24 means: fist 24 bits = network part; last 8 bits = host part i.e. 0 - 255
 sudo ip link set up dev tun0
 
 wait $pid # Don't end until BareTCP finishes

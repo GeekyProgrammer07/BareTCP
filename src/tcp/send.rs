@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct SendSequenceSpace {
     pub una: u32,        // send unacknowledged
     pub nxt: u32,        // send next

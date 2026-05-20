@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct RecvSequenceSpace {
     pub nxt: u32, // receive next
     pub wnd: u16, // receive window
@@ -15,3 +16,4 @@ impl Default for RecvSequenceSpace {
         }
     }
 }
+
