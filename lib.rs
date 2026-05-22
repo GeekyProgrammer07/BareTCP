@@ -123,11 +123,30 @@ impl Read for TcpStream {
 impl Write for TcpStream {
     // Writes a buffer into this writer, returning how many bytes were written
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        unimplemented!()
+        let (write_tx, write_rx) = channel();
+
+        self.tx
+            .send(InterfaceRequest::Write {
+                data: Vec::from(buf),
+                written_count: write_tx,
+            })
+            .unwrap();
+
+        let n = write_rx.recv().unwrap();
+        assert!(n <= buf.len());
+        Ok(n)
     }
 
     // flushes this output stream, ensuring that all intermediately buffered contents reach their destination
+    // Basically with no data
     fn flush(&mut self) -> io::Result<()> {
-        unimplemented!()
+        let (flush_tx, flush_rx) = channel();
+
+        self.tx
+            .send(InterfaceRequest::Flush { ack: flush_tx })
+            .unwrap();
+
+        flush_rx.recv().unwrap();
+        Ok(())
     }
 }
