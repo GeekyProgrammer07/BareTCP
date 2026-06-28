@@ -40,3 +40,7 @@ This builds in release mode, grants the binary `CAP_NET_ADMIN` (so it can manage
 ## Why
 
 To actually understand TCP (handshakes, sequence numbers, yada yada yada) to have **FUN** by implementing it rather than reading about it.
+
+## Credits
+
+A lot of the foundation here comes from following [Jon Gjengset's](https://github.com/jonhoo) TCP-from-scratch series on [YouTube](https://www.youtube.com/@jonhoo). Huge thanks to him — his videos taught me most of what I know going into this.
